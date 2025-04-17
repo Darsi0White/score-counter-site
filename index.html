@@ -1,124 +1,92 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Счетчик баллов</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <title>DarsiO Score Counter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    .dark-mode { --tw-bg-opacity: 1; background-color: rgba(30, 41, 59, var(--tw-bg-opacity)); color: white; }
-    .fade-in { animation: fadeIn 0.5s ease; }
-    @keyframes fadeIn { from {opacity: 0; transform: translateY(-5px);} to {opacity: 1; transform: translateY(0);} }
+    body {font-family: sans-serif; margin: 10px; background: #f0f4f8;}
+    .header {display: flex; align-items: center; justify-content: center; margin-bottom: 15px;}
+    .logo {width: 40px; height: 40px; border-radius: 50%; background: #ff8a65; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; margin-right: 8px;}
+    h1 {font-size: 24px; margin: 0;}
+    #timer, #leader {text-align: center; font-size: 16px; margin: 5px 0;}
+    #players {margin-top: 10px;}
+    .player {display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 8px; padding: 8px; margin: 5px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+    button {padding: 4px 8px; margin: 2px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer;}
+    .add {background: #4caf50; color: white;}
+    .remove {background: #f44336; color: white;}
+    .set {background: #2196f3; color: white;}
+    .reset {background: #607d8b; color: white; padding: 8px; width: 100%; margin-top: 10px; border-radius: 6px;}
+    input[type="text"], input[type="number"] {padding: 4px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; width: 50px;}
   </style>
 </head>
-<body id="body" class="bg-gradient-to-br from-purple-600 to-indigo-700 min-h-screen flex items-center justify-center p-4 transition-colors">
-  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-6 dark-mode:bg-slate-800" id="card">
-    <h1 class="text-3xl font-bold text-center text-indigo-800 dark-mode:text-white">Счетчик баллов</h1>
-    <div class="space-y-3">
-      <input id="playerName" type="text" placeholder="Имя игрока" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
-      <input id="scoreInput" type="number" placeholder="Введите баллы" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
-      <select id="soundSelect" class="w-full p-3 rounded-lg border border-gray-300">
-        <option value="click">Щелчок</option>
-        <option value="coin">Монетка</option>
-        <option value="applause">Аплодисменты</option>
-      </select>
-      <button onclick="addScore()" id="addBtn" class="w-full bg-indigo-600 text-white py-3 rounded-lg text-lg hover:bg-indigo-700 transition">Добавить</button>
-    </div>
-    <div class="text-lg font-semibold text-indigo-800 dark-mode:text-white">Общий счет: <span id="totalScore">0</span></div>
-    <div><h2 class="text-xl font-semibold text-indigo-800 dark-mode:text-white mb-2">История</h2>
-      <ul id="historyList" class="space-y-2 max-h-60 overflow-y-auto"></ul></div>
-    <div class="flex space-x-2">
-      <button onclick="clearHistory()" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition">Сбросить историю</button>
-      <button onclick="toggleDarkMode()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-800 transition">Сменить тему</button>
-    </div>
-    <div class="text-sm text-gray-500 mt-2" id="timerText"></div>
-  </div>
-  <audio id="soundClick" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
-  <audio id="soundCoin" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
-  <audio id="soundApplause" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
-  <script>
-    const input = document.getElementById('scoreInput');
-    const playerInput = document.getElementById('playerName');
-    const soundSelect = document.getElementById('soundSelect');
-    const historyList = document.getElementById('historyList');
-    const totalScoreDisplay = document.getElementById('totalScore');
-    const timerText = document.getElementById('timerText');
-    const body = document.getElementById('body');
-    const card = document.getElementById('card');
-    const sounds = {
-      click: document.getElementById('soundClick'),
-      coin: document.getElementById('soundCoin'),
-      applause: document.getElementById('soundApplause')
-    };
-    let totalScore = 0, lastAddTime = null;
-    function animateScoreChange(newScore) {
-      const startScore = totalScore;
-      const diff = newScore - startScore;
-      const duration = 400, steps = 20, stepTime = duration / steps;
-      let currentStep = 0;
-      const interval = setInterval(() => {
-        currentStep++;
-        const value = Math.round(startScore + (diff * (currentStep / steps)));
-        totalScoreDisplay.textContent = value;
-        if (currentStep >= steps) clearInterval(interval);
-      }, stepTime);
-    }
-    function addScore() {
-      const value = input.value.trim(), playerName = playerInput.value.trim() || 'Игрок';
-      if (value === '') return;
-      const time = new Date().toLocaleString();
-      const entry = `${playerName}: +${value} баллов — ${time}`;
-      const li = document.createElement('li');
-      li.textContent = entry;
-      li.className = "p-2 bg-gray-100 rounded fade-in dark-mode:bg-slate-700";
-      historyList.prepend(li);
-      totalScore += parseInt(value);
-      animateScoreChange(totalScore);
-      saveToLocalStorage(entry, totalScore);
-      input.value = '';
-      lastAddTime = new Date();
-      updateTimer();
-      sounds[soundSelect.value].play();
-    }
-    function saveToLocalStorage(entry, score) {
-      let history = JSON.parse(localStorage.getItem('scoreHistory')) || [];
-      history.unshift(entry);
-      localStorage.setItem('scoreHistory', JSON.stringify(history));
-      localStorage.setItem('totalScore', score);
-    }
-    function loadHistory() {
-      const history = JSON.parse(localStorage.getItem('scoreHistory')) || [];
-      history.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        li.className = "p-2 bg-gray-100 rounded dark-mode:bg-slate-700";
-        historyList.appendChild(li);
-      });
-      totalScore = parseInt(localStorage.getItem('totalScore')) || 0;
-      totalScoreDisplay.textContent = totalScore;
-    }
-    function clearHistory() {
-      localStorage.removeItem('scoreHistory');
-      localStorage.removeItem('totalScore');
-      historyList.innerHTML = '';
-      totalScore = 0;
-      totalScoreDisplay.textContent = totalScore;
-      timerText.textContent = '';
-    }
-    function toggleDarkMode() {
-      body.classList.toggle('dark-mode');
-      card.classList.toggle('dark-mode');
-    }
-    function updateTimer() {
-      if (!lastAddTime) return;
-      setInterval(() => {
-        const now = new Date();
-        const diff = Math.floor((now - lastAddTime) / 1000);
-        timerText.textContent = `Прошло ${diff} сек. с последнего добавления`;
-      }, 1000);
-    }
-    loadHistory();
-  </script>
+<body>
+<div class="header">
+  <div class="logo">D</div>
+  <h1>DarsiO Турнир</h1>
+</div>
+<div style="text-align:center; margin-bottom:10px;">
+  <input type="text" id="playerName" placeholder="Имя">
+  <button class="add" onclick="addPlayer()">+</button>
+</div>
+<div id="timer">Время: 00:00</div>
+<div id="players"></div>
+<div id="leader"></div>
+<button class="reset" onclick="resetGame()">Сбросить игру</button>
+<script>
+let players = JSON.parse(localStorage.getItem('players')) || [];
+let timer = 0, interval;
+function startTimer() {
+  interval = setInterval(() => {
+    timer++;
+    document.getElementById('timer').textContent = `Время: ${String(Math.floor(timer/60)).padStart(2,'0')}:${String(timer%60).padStart(2,'0')}`;
+  }, 1000);
+}
+function addPlayer() {
+  const name = document.getElementById('playerName').value.trim();
+  if(name) {
+    players.push({name, score: 0});
+    savePlayers(); renderPlayers();
+    document.getElementById('playerName').value = '';
+    if(!interval) startTimer();
+  }
+}
+function addPoint(i) { players[i].score++; savePlayers(); renderPlayers(); }
+function removePoint(i) { if(players[i].score>0) players[i].score--; savePlayers(); renderPlayers(); }
+function setScore(i) {
+  const val = parseInt(document.getElementById(`set${i}`).value);
+  if(!isNaN(val)&&val>=0) { players[i].score=val; savePlayers(); renderPlayers(); }
+}
+function savePlayers() { localStorage.setItem('players', JSON.stringify(players)); }
+function resetGame() {
+  if(confirm("Сбросить игру?")) {
+    players=[]; timer=0; clearInterval(interval); interval=null;
+    localStorage.removeItem('players');
+    document.getElementById('timer').textContent='Время: 00:00';
+    renderPlayers();
+  }
+}
+function renderPlayers() {
+  let pDiv=document.getElementById('players'); pDiv.innerHTML='';
+  let maxScore=Math.max(...players.map(p=>p.score),0);
+  players.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='player';
+    div.innerHTML=`<span>${p.name}</span>
+    <div>
+      <button class="remove" onclick="removePoint(${i})">-</button>
+      <b>${p.score}</b>
+      <button class="add" onclick="addPoint(${i})">+</button>
+      <input type="number" id="set${i}" placeholder="0">
+      <button class="set" onclick="setScore(${i})">OK</button>
+    </div>`;
+    pDiv.appendChild(div);
+  });
+  let leaders=players.filter(p=>p.score===maxScore&&maxScore>0).map(p=>p.name);
+  document.getElementById('leader').textContent = leaders.length ? `Лидер: ${leaders.join(", ")}` : '';
+}
+renderPlayers();
+if(players.length>0 && !interval) startTimer();
+</script>
 </body>
 </html>
