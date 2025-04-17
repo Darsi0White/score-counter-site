@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Счетчик баллов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .dark-mode { --tw-bg-opacity: 1; background-color: rgba(30, 41, 59, var(--tw-bg-opacity)); color: white; }
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from {opacity: 0; transform: translateY(-5px);} to {opacity: 1; transform: translateY(0);} }
+  </style>
+</head>
+<body id="body" class="bg-gradient-to-br from-purple-600 to-indigo-700 min-h-screen flex items-center justify-center p-4 transition-colors">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-6 dark-mode:bg-slate-800" id="card">
+    <h1 class="text-3xl font-bold text-center text-indigo-800 dark-mode:text-white">Счетчик баллов</h1>
+    <div class="space-y-3">
+      <input id="playerName" type="text" placeholder="Имя игрока" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+      <input id="scoreInput" type="number" placeholder="Введите баллы" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+      <select id="soundSelect" class="w-full p-3 rounded-lg border border-gray-300">
+        <option value="click">Щелчок</option>
+        <option value="coin">Монетка</option>
+        <option value="applause">Аплодисменты</option>
+      </select>
+      <button onclick="addScore()" id="addBtn" class="w-full bg-indigo-600 text-white py-3 rounded-lg text-lg hover:bg-indigo-700 transition">Добавить</button>
+    </div>
+    <div class="text-lg font-semibold text-indigo-800 dark-mode:text-white">Общий счет: <span id="totalScore">0</span></div>
+    <div><h2 class="text-xl font-semibold text-indigo-800 dark-mode:text-white mb-2">История</h2>
+      <ul id="historyList" class="space-y-2 max-h-60 overflow-y-auto"></ul></div>
+    <div class="flex space-x-2">
+      <button onclick="clearHistory()" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition">Сбросить историю</button>
+      <button onclick="toggleDarkMode()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-800 transition">Сменить тему</button>
+    </div>
+    <div class="text-sm text-gray-500 mt-2" id="timerText"></div>
+  </div>
+  <audio id="soundClick" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
+  <audio id="soundCoin" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
+  <audio id="soundApplause" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
+  <script>
+    const input = document.getElementById('scoreInput');
+    const playerInput = document.getElementById('playerName');
+    const soundSelect = document.getElementById('soundSelect');
+    const historyList = document.getElementById('historyList');
+    const totalScoreDisplay = document.getElementById('totalScore');
+    const timerText = document.getElementById('timerText');
+    const body = document.getElementById('body');
+    const card = document.getElementById('card');
+    const sounds = {
+      click: document.getElementById('soundClick'),
+      coin: document.getElementById('soundCoin'),
+      applause: document.getElementById('soundApplause')
+    };
+    let totalScore = 0, lastAddTime = null;
+    function animateScoreChange(newScore) {
+      const startScore = totalScore;
+      const diff = newScore - startScore;
+      const duration = 400, steps = 20, stepTime = duration / steps;
+      let currentStep = 0;
+      const interval = setInterval(() => {
+        currentStep++;
+        const value = Math.round(startScore + (diff * (currentStep / steps)));
+        totalScoreDisplay.textContent = value;
+        if (currentStep >= steps) clearInterval(interval);
+      }, stepTime);
+    }
+    function addScore() {
+      const value = input.value.trim(), playerName = playerInput.value.trim() || 'Игрок';
+      if (value === '') return;
+      const time = new Date().toLocaleString();
+      const entry = `${playerName}: +${value} баллов — ${time}`;
+      const li = document.createElement('li');
+      li.textContent = entry;
+      li.className = "p-2 bg-gray-100 rounded fade-in dark-mode:bg-slate-700";
+      historyList.prepend(li);
+      totalScore += parseInt(value);
+      animateScoreChange(totalScore);
+      saveToLocalStorage(entry, totalScore);
+      input.value = '';
+      lastAddTime = new Date();
+      updateTimer();
+      sounds[soundSelect.value].play();
+    }
+    function saveToLocalStorage(entry, score) {
+      let history = JSON.parse(localStorage.getItem('scoreHistory')) || [];
+      history.unshift(entry);
+      localStorage.setItem('scoreHistory', JSON.stringify(history));
+      localStorage.setItem('totalScore', score);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('scoreHistory')) || [];
+      history.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        li.className = "p-2 bg-gray-100 rounded dark-mode:bg-slate-700";
+        historyList.appendChild(li);
+      });
+      totalScore = parseInt(localStorage.getItem('totalScore')) || 0;
+      totalScoreDisplay.textContent = totalScore;
+    }
+    function clearHistory() {
+      localStorage.removeItem('scoreHistory');
+      localStorage.removeItem('totalScore');
+      historyList.innerHTML = '';
+      totalScore = 0;
+      totalScoreDisplay.textContent = totalScore;
+      timerText.textContent = '';
+    }
+    function toggleDarkMode() {
+      body.classList.toggle('dark-mode');
+      card.classList.toggle('dark-mode');
+    }
+    function updateTimer() {
+      if (!lastAddTime) return;
+      setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now - lastAddTime) / 1000);
+        timerText.textContent = `Прошло ${diff} сек. с последнего добавления`;
+      }, 1000);
+    }
+    loadHistory();
+  </script>
+</body>
+</html>
